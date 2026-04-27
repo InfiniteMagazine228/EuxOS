@@ -27,7 +27,11 @@ jobs:
             busybox-static \
             cpio \
             gzip \
-            linux-image-generic
+            linux-image-generic \
+            dos2unix
+
+      - name: Fix script line endings
+        run: dos2unix build-euxos.sh
 
       - name: Make script executable
         run: chmod +x build-euxos.sh
