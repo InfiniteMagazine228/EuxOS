@@ -1,4 +1,4 @@
-name: Build Branded EuxOS Tiny ISO
+name: Build EuxOS Visual ISO
 
 on:
   workflow_dispatch:
@@ -6,16 +6,17 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     steps:
-      - name: Install ISO tools
+      - name: Install tools
         run: |
           sudo apt update
-          sudo apt install -y xorriso p7zip-full syslinux-utils wget
+          sudo apt install -y wget xorriso p7zip-full cpio gzip imagemagick
 
-      - name: Download TinyCore ISO
+      - name: Download TinyCore
         run: |
+          rm -rf work
           mkdir -p work
           wget -O work/base.iso https://mirrors.dotsrc.org/tinycorelinux/16.x/x86/release/TinyCore-current.iso
 
@@ -24,42 +25,107 @@ jobs:
           mkdir -p work/iso
           7z x work/base.iso -owork/iso
 
-      - name: Add EuxOS branding files
+      - name: Patch TinyCore rootfs into EuxOS
         run: |
-          mkdir -p work/iso/euxos
+          mkdir -p work/rootfs
+          cd work/rootfs
+          zcat ../iso/boot/core.gz | sudo cpio -idmu
 
-          cat > work/iso/euxos/WELCOME.txt <<'EOF'
+          sudo mkdir -p opt/backgrounds
+          sudo mkdir -p etc/skel/.X.d
+          sudo mkdir -p etc/skel/euxos
+
+          cat > /tmp/euxos-wallpaper.svg <<'EOF'
+          <svg xmlns="http://www.w3.org/2000/svg" width="1366" height="768">
+            <defs>
+              <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#050814"/>
+                <stop offset="45%" stop-color="#0b1020"/>
+                <stop offset="100%" stop-color="#1e1b4b"/>
+              </linearGradient>
+              <radialGradient id="g1" cx="18%" cy="20%" r="50%">
+                <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.8"/>
+                <stop offset="100%" stop-color="#38bdf8" stop-opacity="0"/>
+              </radialGradient>
+              <radialGradient id="g2" cx="82%" cy="30%" r="45%">
+                <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.7"/>
+                <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0"/>
+              </radialGradient>
+            </defs>
+
+            <rect width="100%" height="100%" fill="url(#bg)"/>
+            <rect width="100%" height="100%" fill="url(#g1)"/>
+            <rect width="100%" height="100%" fill="url(#g2)"/>
+
+            <text x="90" y="180" fill="#eaf2ff" font-family="Arial" font-size="92" font-weight="700">EuxOS</text>
+            <text x="96" y="235" fill="#94a3b8" font-family="Arial" font-size="30">Private. Smart. Fluid.</text>
+            <text x="98" y="290" fill="#38bdf8" font-family="Arial" font-size="22">Visual Preview 1.0</text>
+
+            <rect x="90" y="340" width="430" height="130" rx="24" fill="#020617" fill-opacity="0.55" stroke="#334155"/>
+            <text x="125" y="395" fill="#f8fafc" font-family="Arial" font-size="30">Welcome to EuxOS</text>
+            <text x="125" y="435" fill="#cbd5e1" font-family="Arial" font-size="20">Minimal • Fast • AI-native</text>
+          </svg>
+          EOF
+
+          convert /tmp/euxos-wallpaper.svg /tmp/euxos-wallpaper.png
+          sudo cp /tmp/euxos-wallpaper.png opt/backgrounds/euxos-wallpaper.png
+
+          cat > /tmp/welcome.txt <<'EOF'
           ========================================
                         EuxOS
                   Private. Smart. Fluid.
           ========================================
 
-          EuxOS Visual Preview
+          Welcome to EuxOS Visual Preview 1.0
 
-          Minimal GUI concept OS.
-          Based on a lightweight Linux live system.
+          This build is branded as EuxOS:
+          - Custom EuxOS wallpaper
+          - EuxOS startup welcome
+          - EuxOS hostname
+          - Lightweight GUI base
+          EOF
+          sudo cp /tmp/welcome.txt etc/skel/euxos/welcome.txt
+
+          cat > /tmp/euxos-startup <<'EOF'
+          #!/bin/sh
+          sudo hostname euxos 2>/dev/null
+
+          (
+            sleep 2
+            if command -v setbackground >/dev/null 2>&1; then
+              setbackground /opt/backgrounds/euxos-wallpaper.png
+            elif command -v wallpaper >/dev/null 2>&1; then
+              wallpaper /opt/backgrounds/euxos-wallpaper.png
+            elif command -v xli >/dev/null 2>&1; then
+              xli -onroot -fillscreen /opt/backgrounds/euxos-wallpaper.png
+            fi
+
+            if command -v xterm >/dev/null 2>&1; then
+              xterm -T "Welcome to EuxOS" -geometry 80x20+80+80 -e sh -c "cat /home/tc/euxos/welcome.txt; echo; echo Press ENTER to close; read x"
+            fi
+          ) &
           EOF
 
-          cat > work/iso/euxos/README.txt <<'EOF'
-          EuxOS Visual Preview
-          Bootable GUI ISO.
-          Open terminal and run:
+          sudo cp /tmp/euxos-startup etc/skel/.X.d/euxos-startup
+          sudo chmod +x etc/skel/.X.d/euxos-startup
 
-            cat /mnt/sr0/euxos/WELCOME.txt
+          echo "euxos" | sudo tee etc/hostname >/dev/null
 
-          EOF
+          find . | sudo cpio -o -H newc | gzip -9 > ../iso/boot/core.gz
 
+      - name: Rename boot menu to EuxOS
+        run: |
           if [ -f work/iso/boot/isolinux/isolinux.cfg ]; then
             sed -i 's/Tiny Core/EuxOS Visual/g' work/iso/boot/isolinux/isolinux.cfg || true
             sed -i 's/TinyCore/EuxOS Visual/g' work/iso/boot/isolinux/isolinux.cfg || true
             sed -i 's/Core/EuxOS/g' work/iso/boot/isolinux/isolinux.cfg || true
           fi
 
-      - name: Rebuild ISO
+      - name: Rebuild EuxOS ISO
         run: |
           cd work/iso
           sudo xorriso -as mkisofs \
-            -o ../EuxOS-Visual.iso \
+            -o ../EuxOS-Visual-v2.iso \
             -b boot/isolinux/isolinux.bin \
             -c boot/isolinux/boot.cat \
             -no-emul-boot \
@@ -68,10 +134,10 @@ jobs:
             -V "EUXOS_VISUAL" \
             .
           cd ..
-          ls -lh EuxOS-Visual.iso
+          ls -lh EuxOS-Visual-v2.iso
 
-      - name: Upload ISO
+      - name: Upload EuxOS Visual ISO
         uses: actions/upload-artifact@v4
         with:
-          name: EuxOS-Visual-ISO
-          path: work/EuxOS-Visual.iso
+          name: EuxOS-Visual-v2-ISO
+          path: work/EuxOS-Visual-v2.iso
