@@ -1,4 +1,4 @@
-name: Build EuxOS Visual ISO
+name: Build EuxOS Visual ISO v3
 
 on:
   workflow_dispatch:
@@ -25,15 +25,12 @@ jobs:
           mkdir -p work/iso
           7z x work/base.iso -owork/iso
 
-      - name: Patch TinyCore rootfs into EuxOS
+      - name: Create EuxOS overlay initrd
         run: |
-          mkdir -p work/rootfs
-          cd work/rootfs
-          zcat ../iso/boot/core.gz | sudo cpio -idmu
-
-          sudo mkdir -p opt/backgrounds
-          sudo mkdir -p etc/skel/.X.d
-          sudo mkdir -p etc/skel/euxos
+          mkdir -p work/overlay/etc/skel/.X.d
+          mkdir -p work/overlay/etc/skel/euxos
+          mkdir -p work/overlay/opt/backgrounds
+          mkdir -p work/overlay/etc
 
           cat > /tmp/euxos-wallpaper.svg <<'EOF'
           <svg xmlns="http://www.w3.org/2000/svg" width="1366" height="768">
@@ -44,11 +41,11 @@ jobs:
                 <stop offset="100%" stop-color="#1e1b4b"/>
               </linearGradient>
               <radialGradient id="g1" cx="18%" cy="20%" r="50%">
-                <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.8"/>
+                <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.85"/>
                 <stop offset="100%" stop-color="#38bdf8" stop-opacity="0"/>
               </radialGradient>
               <radialGradient id="g2" cx="82%" cy="30%" r="45%">
-                <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.7"/>
+                <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.75"/>
                 <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0"/>
               </radialGradient>
             </defs>
@@ -67,10 +64,9 @@ jobs:
           </svg>
           EOF
 
-          convert /tmp/euxos-wallpaper.svg /tmp/euxos-wallpaper.png
-          sudo cp /tmp/euxos-wallpaper.png opt/backgrounds/euxos-wallpaper.png
+          convert /tmp/euxos-wallpaper.svg work/overlay/opt/backgrounds/euxos-wallpaper.png
 
-          cat > /tmp/welcome.txt <<'EOF'
+          cat > work/overlay/etc/skel/euxos/welcome.txt <<'EOF'
           ========================================
                         EuxOS
                   Private. Smart. Fluid.
@@ -81,17 +77,15 @@ jobs:
           This build is branded as EuxOS:
           - Custom EuxOS wallpaper
           - EuxOS startup welcome
-          - EuxOS hostname
           - Lightweight GUI base
           EOF
-          sudo cp /tmp/welcome.txt etc/skel/euxos/welcome.txt
 
-          cat > /tmp/euxos-startup <<'EOF'
+          cat > work/overlay/etc/skel/.X.d/euxos-startup <<'EOF'
           #!/bin/sh
-          sudo hostname euxos 2>/dev/null
 
           (
             sleep 2
+
             if command -v setbackground >/dev/null 2>&1; then
               setbackground /opt/backgrounds/euxos-wallpaper.png
             elif command -v wallpaper >/dev/null 2>&1; then
@@ -106,26 +100,30 @@ jobs:
           ) &
           EOF
 
-          sudo cp /tmp/euxos-startup etc/skel/.X.d/euxos-startup
-          sudo chmod +x etc/skel/.X.d/euxos-startup
+          chmod +x work/overlay/etc/skel/.X.d/euxos-startup
 
-          echo "euxos" | sudo tee etc/hostname >/dev/null
+          echo "euxos" > work/overlay/etc/hostname
 
-          find . | sudo cpio -o -H newc | gzip -9 > ../iso/boot/core.gz
+          cd work/overlay
+          find . | cpio -o -H newc | gzip -9 > ../iso/boot/euxos.gz
 
-      - name: Rename boot menu to EuxOS
+      - name: Patch boot menu safely
         run: |
+          echo "Listing boot config files:"
+          find work/iso/boot -type f | sort
+
           if [ -f work/iso/boot/isolinux/isolinux.cfg ]; then
-            sed -i 's/Tiny Core/EuxOS Visual/g' work/iso/boot/isolinux/isolinux.cfg || true
             sed -i 's/TinyCore/EuxOS Visual/g' work/iso/boot/isolinux/isolinux.cfg || true
-            sed -i 's/Core/EuxOS/g' work/iso/boot/isolinux/isolinux.cfg || true
+            sed -i 's/Tiny Core/EuxOS Visual/g' work/iso/boot/isolinux/isolinux.cfg || true
+            sed -i 's|/boot/core.gz|/boot/core.gz,/boot/euxos.gz|g' work/iso/boot/isolinux/isolinux.cfg || true
+            cat work/iso/boot/isolinux/isolinux.cfg
           fi
 
       - name: Rebuild EuxOS ISO
         run: |
           cd work/iso
           sudo xorriso -as mkisofs \
-            -o ../EuxOS-Visual-v2.iso \
+            -o ../EuxOS-Visual-v3.iso \
             -b boot/isolinux/isolinux.bin \
             -c boot/isolinux/boot.cat \
             -no-emul-boot \
@@ -134,10 +132,10 @@ jobs:
             -V "EUXOS_VISUAL" \
             .
           cd ..
-          ls -lh EuxOS-Visual-v2.iso
+          ls -lh EuxOS-Visual-v3.iso
 
       - name: Upload EuxOS Visual ISO
         uses: actions/upload-artifact@v4
         with:
-          name: EuxOS-Visual-v2-ISO
-          path: work/EuxOS-Visual-v2.iso
+          name: EuxOS-Visual-v3-ISO
+          path: work/EuxOS-Visual-v3.iso
