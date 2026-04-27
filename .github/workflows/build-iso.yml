@@ -1,0 +1,41 @@
+name: Build EuxOS ISO
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            grub-pc-bin \
+            grub-common \
+            xorriso \
+            mtools \
+            isolinux \
+            syslinux-common \
+            busybox-static \
+            cpio \
+            gzip \
+            linux-image-generic
+
+      - name: Make script executable
+        run: chmod +x build-euxos.sh
+
+      - name: Build ISO
+        run: sudo ./build-euxos.sh
+
+      - name: Upload EuxOS ISO
+        uses: actions/upload-artifact@v4
+        with:
+          name: EuxOS-ISO
+          path: EuxOS.iso
