@@ -22,7 +22,7 @@ jobs:
           mkdir euxos-gui
           cd euxos-gui
 
-          lb config \
+                    lb config \
             --mode debian \
             --distribution bookworm \
             --architectures amd64 \
@@ -30,6 +30,7 @@ jobs:
             --debian-installer none \
             --archive-areas "main" \
             --security false \
+            --apt-indices false \
             --mirror-bootstrap "http://deb.debian.org/debian/" \
             --mirror-chroot "http://deb.debian.org/debian/" \
             --mirror-binary "http://deb.debian.org/debian/" \
