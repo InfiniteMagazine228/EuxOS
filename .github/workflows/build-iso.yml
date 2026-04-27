@@ -33,26 +33,27 @@ jobs:
           mkdir -p config/package-lists
 
           cat > config/package-lists/euxos-gui.list.chroot <<'EOF'
-linux-image-amd64
-live-boot
-live-config
-systemd-sysv
-xorg
-xfce4
-xfce4-terminal
-thunar
-lightdm
-lightdm-gtk-greeter
-sudo
-nano
-htop
-EOF
+          linux-image-amd64
+          live-boot
+          live-config
+          systemd-sysv
+          xorg
+          xfce4
+          xfce4-terminal
+          thunar
+          lightdm
+          lightdm-gtk-greeter
+          sudo
+          nano
+          htop
+          EOF
 
           mkdir -p config/includes.chroot/etc
+
           cat > config/includes.chroot/etc/issue <<'EOF'
-EuxOS GUI Preview 0.2
-Private. Smart. Fluid.
-EOF
+          EuxOS GUI Preview 0.2
+          Private. Smart. Fluid.
+          EOF
 
       - name: Build EuxOS GUI ISO
         run: |
