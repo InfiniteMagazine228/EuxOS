@@ -1,23 +1,77 @@
-name: Build EuxOS Tiny GUI ISO
+name: Build Branded EuxOS Tiny ISO
 
 on:
   workflow_dispatch:
 
 jobs:
-  build-tiny-gui:
+  build:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
-      - name: Download TinyCore GUI ISO from mirror
+      - name: Install ISO tools
         run: |
-          mkdir -p out
-          cd out
-          wget --timeout=30 --tries=3 -O EuxOS-Tiny-GUI.iso https://mirrors.dotsrc.org/tinycorelinux/16.x/x86/release/TinyCore-current.iso
-          ls -lh EuxOS-Tiny-GUI.iso
+          sudo apt update
+          sudo apt install -y xorriso p7zip-full syslinux-utils wget
 
-      - name: Upload EuxOS Tiny GUI ISO
+      - name: Download TinyCore ISO
+        run: |
+          mkdir -p work
+          wget -O work/base.iso https://mirrors.dotsrc.org/tinycorelinux/16.x/x86/release/TinyCore-current.iso
+
+      - name: Extract ISO
+        run: |
+          mkdir -p work/iso
+          7z x work/base.iso -owork/iso
+
+      - name: Add EuxOS branding files
+        run: |
+          mkdir -p work/iso/euxos
+
+          cat > work/iso/euxos/WELCOME.txt <<'EOF'
+          ========================================
+                        EuxOS
+                  Private. Smart. Fluid.
+          ========================================
+
+          EuxOS Visual Preview
+
+          Minimal GUI concept OS.
+          Based on a lightweight Linux live system.
+          EOF
+
+          cat > work/iso/euxos/README.txt <<'EOF'
+          EuxOS Visual Preview
+          Bootable GUI ISO.
+          Open terminal and run:
+
+            cat /mnt/sr0/euxos/WELCOME.txt
+
+          EOF
+
+          if [ -f work/iso/boot/isolinux/isolinux.cfg ]; then
+            sed -i 's/Tiny Core/EuxOS Visual/g' work/iso/boot/isolinux/isolinux.cfg || true
+            sed -i 's/TinyCore/EuxOS Visual/g' work/iso/boot/isolinux/isolinux.cfg || true
+            sed -i 's/Core/EuxOS/g' work/iso/boot/isolinux/isolinux.cfg || true
+          fi
+
+      - name: Rebuild ISO
+        run: |
+          cd work/iso
+          sudo xorriso -as mkisofs \
+            -o ../EuxOS-Visual.iso \
+            -b boot/isolinux/isolinux.bin \
+            -c boot/isolinux/boot.cat \
+            -no-emul-boot \
+            -boot-load-size 4 \
+            -boot-info-table \
+            -V "EUXOS_VISUAL" \
+            .
+          cd ..
+          ls -lh EuxOS-Visual.iso
+
+      - name: Upload ISO
         uses: actions/upload-artifact@v4
         with:
-          name: EuxOS-Tiny-GUI-ISO
-          path: out/EuxOS-Tiny-GUI.iso
+          name: EuxOS-Visual-ISO
+          path: work/EuxOS-Visual.iso
