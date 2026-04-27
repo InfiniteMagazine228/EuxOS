@@ -1,4 +1,4 @@
-name: Build EuxOS GUI ISO
+name: Build EuxOS Tiny GUI ISO
 
 on:
   workflow_dispatch:
@@ -6,23 +6,20 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build-gui:
+  build-tiny-gui:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 30
 
     steps:
-      - name: Download Debian XFCE Live ISO
+      - name: Download TinyCore GUI ISO
         run: |
           mkdir -p out
           cd out
-          wget -O index.html https://cdimage.debian.org/debian-cd/current-live/amd64/iso-hybrid/
-          ISO_URL=$(grep -o 'href="[^"]*amd64-xfce.iso"' index.html | head -n 1 | sed 's/href="//;s/"//')
-          echo "Found ISO: $ISO_URL"
-          wget -O EuxOS-GUI.iso "https://cdimage.debian.org/debian-cd/current-live/amd64/iso-hybrid/$ISO_URL"
-          ls -lh EuxOS-GUI.iso
+          wget -O EuxOS-Tiny-GUI.iso https://tinycorelinux.net/16.x/x86/release/TinyCore-current.iso
+          ls -lh EuxOS-Tiny-GUI.iso
 
-      - name: Upload EuxOS GUI ISO
+      - name: Upload EuxOS Tiny GUI ISO
         uses: actions/upload-artifact@v4
         with:
-          name: EuxOS-GUI-ISO
-          path: out/EuxOS-GUI.iso
+          name: EuxOS-Tiny-GUI-ISO
+          path: out/EuxOS-Tiny-GUI.iso
