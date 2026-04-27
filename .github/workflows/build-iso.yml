@@ -14,46 +14,51 @@ jobs:
       - name: Install live-build
         run: |
           sudo apt update
-          sudo DEBIAN_FRONTEND=noninteractive apt install -y live-build
+          sudo DEBIAN_FRONTEND=noninteractive apt install -y live-build debian-archive-keyring
 
       - name: Create EuxOS GUI config
         run: |
+          rm -rf euxos-gui
           mkdir euxos-gui
           cd euxos-gui
 
           lb config \
+            --mode debian \
             --distribution bookworm \
             --architectures amd64 \
             --binary-images iso-hybrid \
             --debian-installer none \
             --archive-areas "main" \
             --security false \
+            --mirror-bootstrap "http://deb.debian.org/debian/" \
+            --mirror-chroot "http://deb.debian.org/debian/" \
+            --mirror-binary "http://deb.debian.org/debian/" \
             --bootappend-live "boot=live components quiet username=euxos hostname=euxos"
 
           mkdir -p config/package-lists
 
-          cat > config/package-lists/euxos-gui.list.chroot <<'EOF'
-          linux-image-amd64
-          live-boot
-          live-config
-          systemd-sysv
-          xorg
-          xfce4
-          xfce4-terminal
-          thunar
-          lightdm
-          lightdm-gtk-greeter
-          sudo
-          nano
-          htop
-          EOF
+          printf '%s\n' \
+            linux-image-amd64 \
+            live-boot \
+            live-config \
+            systemd-sysv \
+            xorg \
+            xfce4 \
+            xfce4-terminal \
+            thunar \
+            lightdm \
+            lightdm-gtk-greeter \
+            sudo \
+            nano \
+            htop \
+            > config/package-lists/euxos-gui.list.chroot
 
           mkdir -p config/includes.chroot/etc
 
-          cat > config/includes.chroot/etc/issue <<'EOF'
-          EuxOS GUI Preview 0.2
-          Private. Smart. Fluid.
-          EOF
+          printf '%s\n' \
+            "EuxOS GUI Preview 0.2" \
+            "Private. Smart. Fluid." \
+            > config/includes.chroot/etc/issue
 
       - name: Build EuxOS GUI ISO
         run: |
