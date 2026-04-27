@@ -14,30 +14,20 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Install build tools
+      - name: Fix script line endings
         run: |
           sudo apt update
-          sudo DEBIAN_FRONTEND=noninteractive apt install -y \
-            grub-pc-bin \
-            grub-common \
-            xorriso \
-            mtools \
-            isolinux \
-            syslinux-common \
-            busybox-static \
-            cpio \
-            gzip \
-            linux-image-generic \
-            dos2unix
-
-      - name: Fix script line endings
-        run: dos2unix build-euxos.sh
+          sudo apt install -y dos2unix
+          dos2unix build-euxos.sh
 
       - name: Make script executable
         run: chmod +x build-euxos.sh
 
       - name: Build ISO
-        run: sudo DEBIAN_FRONTEND=noninteractive ./build-euxos.sh
+        run: sudo ./build-euxos.sh
+
+      - name: Check ISO exists
+        run: ls -lh EuxOS.iso
 
       - name: Upload EuxOS ISO
         uses: actions/upload-artifact@v4
