@@ -2,11 +2,13 @@ name: Build EuxOS GUI ISO
 
 on:
   workflow_dispatch:
+  push:
+    branches: [ "main" ]
 
 jobs:
   build-gui:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
 
     steps:
       - name: Install live-build
@@ -24,36 +26,44 @@ jobs:
             --architectures amd64 \
             --binary-images iso-hybrid \
             --debian-installer none \
-            --archive-areas "main contrib non-free non-free-firmware" \
+            --archive-areas "main" \
+            --security false \
             --bootappend-live "boot=live components quiet username=euxos hostname=euxos"
 
           mkdir -p config/package-lists
 
-          cat > config/package-lists/euxos.list.chroot <<'EOF'
-          task-xfce-desktop
-          lightdm
-          network-manager
-          sudo
-          nano
-          htop
-          neofetch
-          firefox-esr
-          EOF
+          cat > config/package-lists/euxos-gui.list.chroot <<'EOF'
+linux-image-amd64
+live-boot
+live-config
+systemd-sysv
+xorg
+xfce4
+xfce4-terminal
+thunar
+lightdm
+lightdm-gtk-greeter
+sudo
+nano
+htop
+EOF
 
           mkdir -p config/includes.chroot/etc
           cat > config/includes.chroot/etc/issue <<'EOF'
-          EuxOS GUI Preview 0.2
-          Private. Smart. Fluid.
-          EOF
+EuxOS GUI Preview 0.2
+Private. Smart. Fluid.
+EOF
 
-      - name: Build ISO
+      - name: Build EuxOS GUI ISO
         run: |
           cd euxos-gui
           sudo lb build
-          ls -lh
           cp live-image-amd64.hybrid.iso ../EuxOS-GUI.iso
 
-      - name: Upload ISO
+      - name: Check ISO
+        run: ls -lh EuxOS-GUI.iso
+
+      - name: Upload EuxOS GUI ISO
         uses: actions/upload-artifact@v4
         with:
           name: EuxOS-GUI-ISO
