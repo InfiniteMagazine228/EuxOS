@@ -8,6 +8,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout source
@@ -16,7 +17,7 @@ jobs:
       - name: Install build tools
         run: |
           sudo apt update
-          sudo apt install -y \
+          sudo DEBIAN_FRONTEND=noninteractive apt install -y \
             grub-pc-bin \
             grub-common \
             xorriso \
@@ -32,7 +33,7 @@ jobs:
         run: chmod +x build-euxos.sh
 
       - name: Build ISO
-        run: sudo ./build-euxos.sh
+        run: sudo DEBIAN_FRONTEND=noninteractive ./build-euxos.sh
 
       - name: Upload EuxOS ISO
         uses: actions/upload-artifact@v4
